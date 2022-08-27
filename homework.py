@@ -12,11 +12,11 @@ class InfoMessage:
     speed: float
     calories: float
 
-    message_template: str = ('Тип тренировки: {training_type}; '
-                             'Длительность: {duration:.3f} ч.; '
-                             'Дистанция: {distance:.3f} км; '
-                             'Ср. скорость: {speed:.3f} км/ч; '
-                             'Потрачено ккал: {calories:.3f}.')
+    message_template = ('Тип тренировки: {training_type}; '
+                        'Длительность: {duration:.3f} ч.; '
+                        'Дистанция: {distance:.3f} км; '
+                        'Ср. скорость: {speed:.3f} км/ч; '
+                        'Потрачено ккал: {calories:.3f}.')
 
     def get_message(self) -> str:
         return self.message_template.format(**asdict(self))
@@ -26,6 +26,7 @@ class Training:
     """Базовый класс тренировки."""
     LEN_STEP: float = 0.65  # Длина шага
     M_IN_KM: int = 1000  # Коэффициент для перевода метра в километры
+    MIN_IN_HOUR: int = 60  # Коэффициент для перевода минуты в часы
 
     def __init__(self,
                  action: int,
@@ -61,12 +62,12 @@ class Training:
 
 class Running(Training):
     """Тренировка: бег."""
-    RUN_COEFF_1: int = 18  # Первый коэффициент
-    RUN_COEFF_2: int = 20  # Второй коэффициент
-    MIN_IN_HOUR: int = 60  # Коэффициент для перевода минуты в часы
+    MEAN_SPEED_MULTIPLE: int = 18  # Первый коэффициент
+    MEAN_SPEED_SUBTRAHEND: int = 20  # Второй коэффициент
 
     def get_spent_calories(self) -> float:
-        cal = self.RUN_COEFF_1 * self.get_mean_speed() - self.RUN_COEFF_2
+        multiple_and_speed = self.MEAN_SPEED_MULTIPLE * self.get_mean_speed()
+        cal = multiple_and_speed - self.MEAN_SPEED_SUBTRAHEND
         duration_and_min_in_hour = self.duration * self.MIN_IN_HOUR
         calories = cal * self.weight / self.M_IN_KM * duration_and_min_in_hour
         return calories
@@ -76,7 +77,6 @@ class SportsWalking(Training):
     """Тренировка: спортивная ходьба."""
     COEFF_WALK_1: float = 0.035  # Первый коэффициент
     COEFF_WALK_2: float = 0.029  # Второй коэффициент
-    MIN_IN_HOUR: int = 60  # Коэффициент для перевода минуты в часы
 
     def __init__(self,
                  action: int,
@@ -87,13 +87,13 @@ class SportsWalking(Training):
         self.height = height
 
     def get_spent_calories(self) -> float:
-        SPEED = self.get_mean_speed()
-        DURATION_IN_MIN = self.duration * self.MIN_IN_HOUR
-        COEFF_AND_WEIGHT_1 = self.COEFF_WALK_1 * self.weight
-        COEFF_AND_WEIGHT_2 = SPEED ** 2 // self.height
-        COEFF_WALK_2_AND_WEIGHT = self.COEFF_WALK_2 * self.weight
-        MEAN_SPEED_AND_WEIGHT = COEFF_AND_WEIGHT_2 * COEFF_WALK_2_AND_WEIGHT
-        return (COEFF_AND_WEIGHT_1 + MEAN_SPEED_AND_WEIGHT) * DURATION_IN_MIN
+        speed = self.get_mean_speed()
+        duration_in_min = self.duration * self.MIN_IN_HOUR
+        coeff_and_weight_1 = self.COEFF_WALK_1 * self.weight
+        coeff_and_weight_2 = speed ** 2 // self.height
+        coeff_walk_2_and_weight = self.COEFF_WALK_2 * self.weight
+        mean_speed_and_weight = coeff_and_weight_2 * coeff_walk_2_and_weight
+        return (coeff_and_weight_1 + mean_speed_and_weight) * duration_in_min
 
 
 class Swimming(Training):
@@ -127,17 +127,17 @@ class Swimming(Training):
 def read_package(workout_type: str, data: Sequence[int]) -> Training:
     """Прочитать данные полученные от датчиков."""
 
-    training_title = Dict[str, Type[Training]]
+    trainings = Dict[str, Type[Training]]
 
-    training_title = {
+    trainings = {
         'SWM': Swimming,
         'RUN': Running,
         'WLK': SportsWalking
     }
-    if workout_type not in training_title:
+    if workout_type not in trainings:
         raise NotImplementedError('Данный вид тренировки отсутствует')
 
-    return training_title[workout_type](*data)
+    return trainings[workout_type](*data)
 
 
 def main(training: Training) -> None:
